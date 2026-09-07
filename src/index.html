@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is Freight Moving? Tonnage, Rail and the Freight Recessions</title>
+<meta name="description" content="Freight is the economy you can weigh. US truck tonnage, rail carloads and intermodal since 2000 with every freight recession scored, heavy-truck sales since 1967, vehicle miles since 1970, and Canadian rail tonnage.">
+<link rel="stylesheet" href="/shared-footer/footer.css">
+<style>
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --plane: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #4a3aa7;
+  --tooltip-bg: rgba(252,252,251,0.97);
+  --warn: #b3541e;
+  --band-alpha: 0.09;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #9085e9;
+    --tooltip-bg: rgba(26,26,25,0.97);
+    --warn: #e08a4f;
+    --band-alpha: 0.13;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --plane: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #9085e9;
+  --tooltip-bg: rgba(26,26,25,0.97);
+  --warn: #e08a4f;
+  --band-alpha: 0.13;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 8px; }
+
+header h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.02em; }
+header p.sub { margin: 0; color: var(--text-secondary); max-width: 68ch; }
+.chip {
+  display: inline-flex; align-items: baseline; gap: 8px; margin-top: 16px;
+  padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-1); font-size: 0.82rem; color: var(--text-secondary);
+}
+.chip[hidden] { display: none; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--series-3); flex: none; align-self: center; }
+.chip[data-state="signal"] .dot { background: var(--series-2); }
+.chip b { color: var(--text-primary); font-weight: 650; }
+.stamp { margin-top: 10px; font-size: 0.82rem; color: var(--muted); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 24px 0 8px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.tile .label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.tile .value { font-size: 1.85rem; font-weight: 650; letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .note { font-size: 0.8rem; color: var(--text-secondary); }
+
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 18px 14px; margin: 16px 0; }
+.card h2 { font-size: 1.05rem; margin: 0 0 2px; letter-spacing: -0.01em; }
+.card p.cap { margin: 0 0 12px; font-size: 0.85rem; color: var(--text-secondary); max-width: 90ch; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 8px; font-size: 0.85rem; color: var(--text-secondary); }
+.legend span.item { display: flex; align-items: center; gap: 7px; }
+.legend .swatch { width: 14px; height: 3px; border-radius: 2px; }
+.legend .swatch.dashed { background: none !important; border-top: 3px dashed; width: 14px; height: 0; border-radius: 0; }
+.legend .swatch.band { width: 14px; height: 10px; border: 1px solid var(--border); }
+
+.plot { position: relative; width: 100%; }
+canvas { display: block; width: 100%; touch-action: pan-y; }
+.tooltip {
+  position: absolute; pointer-events: none; opacity: 0; transition: opacity .08s;
+  background: var(--tooltip-bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 0.8rem; line-height: 1.45; white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14); z-index: 5; color: var(--text-primary);
+}
+.tooltip .tdate { color: var(--muted); font-size: 0.74rem; margin-bottom: 3px; }
+.tooltip .trow { display: flex; align-items: center; gap: 7px; }
+.tooltip .tval { font-variant-numeric: tabular-nums; margin-left: auto; padding-left: 14px; font-weight: 600; }
+
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .duo { grid-template-columns: 1fr; } }
+.duo h3 { font-size: 0.9rem; margin: 0 0 8px; color: var(--text-secondary); font-weight: 600; }
+
+.status { color: var(--text-secondary); font-size: 0.9rem; padding: 40px 0; text-align: center; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+td .tag { color: var(--muted); font-size: 0.78rem; }
+.tablewrap { overflow-x: auto; }
+tr.open td { font-weight: 650; }
+
+.prose { font-size: 0.92rem; color: var(--text-secondary); }
+.prose h3 { font-size: 0.95rem; color: var(--text-primary); margin: 18px 0 6px; }
+.prose ul { padding-left: 20px; margin: 6px 0; }
+.prose li { margin-bottom: 7px; }
+.prose a { color: var(--series-1); }
+.prose code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; background: var(--plane); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+/* A figure the data could not supply renders as a visible gap, never as a
+   silently vanished number. */
+[data-tok] { font-variant-numeric: tabular-nums; }
+.tok-missing { color: var(--warn); border-bottom: 1px dashed var(--warn); }
+
+/* The hub footer is styled by /shared-footer/footer.css, linked above and
+   served by Caddy's shared_footer snippet. Deliberately not restyled here. */
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Is Freight Moving?</h1>
+    <p class="sub">Freight is the economy you can weigh: tonnes on trucks and rails, containers on flatcars, miles on highways. It is the physical twin of the refining margin tracked at <a href="https://diesel.chrislawrence.ca" style="color:var(--series-1)">diesel</a>, and it stops before the wider economy notices. This page keeps the score: truck tonnage, rail carloads and intermodal since 2000 with every freight recession dated and scored, the deep flanking series back to 1967, and Canada's rail tonnage. Nothing here is a forecast.</p>
+    <p class="chip" id="chip" hidden></p>
+    <p class="stamp" id="stamp">Loading data…</p>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>Volumes, year over year</h2>
+    <p class="cap">Percent change from a year earlier, which is also what makes three differently-based indexes comparable on one chart. Truck tonnage is the scored series; rail carloads are the industrial economy (coal, chemicals, grain); intermodal is the consumer-goods economy in containers. Shaded bands are NBER recessions.</p>
+    <div class="legend" id="legend-main"></div>
+    <div class="plot"><canvas id="c-main" height="380"></canvas><div class="tooltip" id="t-main"></div></div>
+    <p class="status" id="status">Weighing the economy…</p>
+  </section>
+
+  <section class="card">
+    <h2>Every freight recession, scored</h2>
+    <p class="cap" id="rule-cap">Computed from the tonnage series on every refresh, never hand-maintained. <span data-tok="rule_statement">…</span></p>
+    <div class="tablewrap"><table id="ep-tbl">
+      <thead><tr><th>Tonnage peaked</th><th>Alarm fired</th><th>Bottom</th><th>Depth</th><th>Recession began</th><th>Lead from peak</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="prose" style="margin:12px 0 0">
+      <p>Three episodes in the measurable era, and each tells a different story. The 2006 alarm led the Great Recession by 22 months, freight's famous early call, and the merged 2006-09 episode swallowed a 2008 dead-cat bounce on its way to the deepest bottom in the series. The 2020 stop was coincident: the recession caused it, not the reverse. <strong><span data-tok="newest_label">…</span></strong>: <span data-tok="newest_row">…</span></p>
+      <p>What is absent matters as much. The 2015-16 industrial bust and the 2019 trucking slump are both visible in the rail and Cass lines on this page, but neither held truck tonnage below its year-earlier level for three straight months, so under the printed rule neither qualifies; absence under a printed rule is information about where those downturns actually lived. And the 2001 recession goes uncredited (<span data-tok="uncredited">…</span>) because the tonnage series starts in 2000: its first measurable year IS that recession, with no crest visible before it, the same left-censoring the <a href="https://lending.chrislawrence.ca">lending page</a> declares for 1990.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The composite BTS actually publishes</h2>
+    <p class="cap">The Freight Transportation Services Index: trucking, rail, inland waterways, pipeline and air freight in one seasonally adjusted index, monthly since 2000, revised routinely as source data settle (the revision log below records it).</p>
+    <div class="legend" id="legend-tsi"></div>
+    <div class="plot"><canvas id="c-tsi" height="300"></canvas><div class="tooltip" id="t-tsi"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>The recent tape: Cass shipments and expenditures</h2>
+    <p class="cap"><strong>Ten years is all there is</strong>: Cass licenses FRED to redistribute only a sliding window (2016 onward as probed), although the index reaches 1990. Shown because the pair is the industry's benchmark, and the gap between the two lines is freight rates: expenditures rising faster than shipments is pricing power, the reverse is a rate bust.</p>
+    <div class="legend" id="legend-cass"></div>
+    <div class="plot"><canvas id="c-cass" height="300"></canvas><div class="tooltip" id="t-cass"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>The deep flankers</h2>
+    <div class="duo">
+      <div>
+        <h3><span class="swatch" style="background:var(--series-2);display:inline-block;vertical-align:baseline"></span> Heavy truck sales, SAAR, since 1967</h3>
+        <div class="plot"><canvas id="c-trucks" height="260"></canvas><div class="tooltip" id="t-trucks"></div></div>
+      </div>
+      <div>
+        <h3><span class="swatch" style="background:var(--series-4);display:inline-block;vertical-align:baseline"></span> Vehicle miles traveled, YoY, since 1971</h3>
+        <div class="plot"><canvas id="c-vmt" height="260"></canvas><div class="tooltip" id="t-vmt"></div></div>
+      </div>
+    </div>
+    <p class="prose" style="margin:12px 0 0">Heavy-truck sales are the capex canary: fleets stop ordering before freight turns, and the series has crashed into or through every recession of its six decades. Vehicle miles are everything on wheels, not just freight, drawn year-over-year because the source is unadjusted; the 2020 crater is the deepest reading in either series' history.</p>
+  </section>
+
+  <section class="card">
+    <h2>Canada: the railway economy</h2>
+    <p class="cap">Total railway traffic carried, tonnes, year over year, monthly since 1999. Canada's freight economy is disproportionately rail (grain, potash, oil, containers from the ports), and the source is unadjusted, so year-over-year is the honest rendering. Shading is the C.D. Howe chronology.</p>
+    <div class="legend" id="legend-ca"></div>
+    <div class="plot"><canvas id="c-ca" height="300"></canvas><div class="tooltip" id="t-ca"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Revisions to published history</h2>
+    <p class="cap" id="rev-cap">Checking…</p>
+    <div class="tablewrap" id="rev-wrap" style="display:none"><table id="rev-tbl">
+      <thead><tr><th>Observed</th><th>Series</th><th>Values changed</th><th>Span</th><th>Largest change</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <p class="prose" style="margin:10px 0 0">BTS revises the TSI and tonnage indexes routinely as carrier data settle, so this log is expected to be busy; that is the data behaving normally, not an alarm. The Cass window sliding forward sheds old observations, which is not a revision and is not logged. Every refresh is diffed against the one before it.</p>
+  </section>
+
+  <section class="card">
+    <h2>Sources and construction</h2>
+    <div class="prose" style="margin-top:6px">
+      <h3>United States</h3>
+      <ul>
+        <li><strong>Bureau of Transportation Statistics</strong> via FRED, all monthly since 2000, seasonally adjusted: freight TSI <a href="https://fred.stlouisfed.org/series/TSIFRGHT">TSIFRGHT</a>, truck tonnage <a href="https://fred.stlouisfed.org/series/TRUCKD11">TRUCKD11</a> (the scored series), rail carloads <a href="https://fred.stlouisfed.org/series/RAILFRTCARLOADSD11">RAILFRTCARLOADSD11</a>, intermodal <a href="https://fred.stlouisfed.org/series/RAILFRTINTERMODALD11">RAILFRTINTERMODALD11</a>.</li>
+        <li><strong>The deep flankers</strong>: heavy truck sales <a href="https://fred.stlouisfed.org/series/HTRUCKSSAAR">HTRUCKSSAAR</a> (since 1967) and vehicle miles <a href="https://fred.stlouisfed.org/series/TRFVOLUSM227NFWA">TRFVOLUSM227NFWA</a> (since 1970).</li>
+        <li><strong>Cass Freight Index</strong> shipments <a href="https://fred.stlouisfed.org/series/FRGSHPUSM649NCIS">FRGSHPUSM649NCIS</a> and expenditures <a href="https://fred.stlouisfed.org/series/FRGEXPUSM649NCIS">FRGEXPUSM649NCIS</a>: redistribution limited to a sliding ~10-year window (probed 2026-09-07), stated wherever drawn.</li>
+        <li><strong>AAR's weekly rail carloads have no keyless machine-readable feed</strong> (press releases only); monthly BTS rail carries that story here, and the weekly gap is named rather than scraped around.</li>
+        <li><strong>Recession bands</strong>: NBER dates via <a href="https://fred.stlouisfed.org/series/USREC">USREC</a>, from the shared dataset.</li>
+      </ul>
+      <h3>Canada</h3>
+      <ul>
+        <li>Railway carloadings, total traffic carried in tonnes, Statistics Canada table <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=2310021601">23-10-0216-01</a>, vector v74869, resolved from cube metadata and fetched with its live English title verified. Monthly since 1999, unadjusted.</li>
+        <li><strong>Recession bands</strong>: <a href="https://www.cdhowe.org/wp-content/uploads/2024/12/Commentary_366_0-2.pdf">C.D. Howe Institute Business Cycle Council</a> chronology, from the shared dataset.</li>
+      </ul>
+      <h3>Plumbing</h3>
+      <ul>
+        <li>FRED is fetched keyless-first (public CSV), keyed API as fallback; StatCan WDS has no keys. A failed fetch carries the stored series forward and says so.</li>
+        <li>Refreshes daily via cron; BTS posts mid-month, StatCan on its own calendar. The stamp above says when data last moved.</li>
+        <li>Series follow the shared <code>econ-core</code> contract used across <a href="https://lending.chrislawrence.ca">lending</a>, <a href="https://credit.chrislawrence.ca">credit</a>, <a href="https://housing.chrislawrence.ca">housing</a>, <a href="https://yield.chrislawrence.ca">yield</a>, <a href="https://jobs.chrislawrence.ca">jobs</a>, <a href="https://debt.chrislawrence.ca">debt</a> and <a href="https://diesel.chrislawrence.ca">diesel</a>, with a vintages field reserved for as-published views.</li>
+        <li>Raw data: <a href="/api/data">/api/data</a>, or the files under <a href="/data/series.json">/data/</a>.</li>
+        <li>Assembled with Claude (Anthropic). Measured volumes and computed history with the rule printed; no forecasts.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<footer class="chrislawrence-footer">
+  <a href="https://chrislawrence.ca" class="footer-home-link" aria-label="Back to chrislawrence.ca">
+    <img src="/shared-footer/logo-portrait.png" alt="Chris Lawrence" class="footer-logo"
+         width="32" height="32" loading="lazy" onerror="this.remove()">
+    <span class="footer-home-link-text">Back to chrislawrence.ca</span>
+  </a>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var YEAR = 365.25 * 86400000;
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var state = { p: null };
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function rgba(hex, a) {
+    var n = parseInt(hex.replace("#", ""), 16);
+    return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  function ms(iso) { return Date.parse(iso + "T00:00:00Z"); }
+  function pts(entry) { return entry.obs.map(function (o) { return [ms(o[0]), o[1]]; }); }
+  function monthWord(ym) { var q = ym.split("-"); return MONTHS[+q[1] - 1] + " " + q[0]; }
+
+  function fmtPct1(v) { return v === null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%"; }
+
+  function niceTicks(lo, hi, target) {
+    var span = hi - lo; if (span <= 0) span = 1;
+    var raw = span / target;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+    var ticks = [];
+    for (var k = Math.ceil(lo / step); k * step <= hi + step * 0.001; k++) {
+      ticks.push(Math.round(k * step * 1e6) / 1e6);
+    }
+    return ticks;
+  }
+
+  // ------------------------------------------------------------------
+  // Time-scaled canvas chart. Shared engine across the family.
+  // ------------------------------------------------------------------
+  function TimeChart(canvasId, tooltipId, opts) {
+    this.canvas = document.getElementById(canvasId);
+    this.tip = document.getElementById(tooltipId);
+    this.opts = opts || {};
+    this.hover = null;
+    this.h = parseInt(this.canvas.getAttribute("height"), 10) || 300;
+    var self = this;
+    this.canvas.addEventListener("mousemove", function (e) { self.onMove(e.clientX); });
+    this.canvas.addEventListener("mouseleave", function () { self.clearHover(); });
+    this.canvas.addEventListener("touchmove", function (e) { if (e.touches[0]) self.onMove(e.touches[0].clientX); }, { passive: true });
+    this.canvas.addEventListener("touchend", function () { self.clearHover(); });
+    this.canvas.addEventListener("touchcancel", function () { self.clearHover(); });
+  }
+
+  TimeChart.prototype.clearHover = function () { this.hover = null; this.tip.style.opacity = 0; this.draw(); };
+
+  TimeChart.prototype.setData = function (series, bands) {
+    this.series = series.filter(function (s) { return s.points.length; });
+    this.bands = bands || [];
+    var union = [];
+    this.series.forEach(function (s) {
+      s.medGap = medianGap(s.points);
+      s.points.forEach(function (pt) { union.push(pt[0]); });
+    });
+    union.sort(function (a, b) { return a - b; });
+    this.union = union.filter(function (v, i) { return i === 0 || v !== union[i - 1]; });
+    this.hover = null;
+    this.draw();
+  };
+
+  function medianGap(points) {
+    if (points.length < 2) return YEAR;
+    var gaps = [];
+    for (var i = 1; i < points.length; i++) gaps.push(points[i][0] - points[i - 1][0]);
+    gaps.sort(function (a, b) { return a - b; });
+    return gaps[Math.floor(gaps.length / 2)];
+  }
+
+  function nearest(points, t) {
+    var lo = 0, hi = points.length - 1;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (points[mid][0] < t) lo = mid + 1; else hi = mid; }
+    if (lo > 0 && Math.abs(points[lo - 1][0] - t) < Math.abs(points[lo][0] - t)) lo -= 1;
+    return lo;
+  }
+
+  TimeChart.prototype.onMove = function (clientX) {
+    if (!this.geom || !this.union || !this.union.length) return;
+    var rect = this.canvas.getBoundingClientRect();
+    var g = this.geom;
+    var t = this.x0 + (clientX - rect.left - g.left) / (g.right - g.left) * (this.x1 - this.x0);
+    var k = nearest(this.union.map(function (v) { return [v, 0]; }), t);
+    var snapped = this.union[Math.max(0, Math.min(this.union.length - 1, k))];
+    if (snapped === this.hover) return;
+    this.hover = snapped;
+    this.draw();
+    this.showTip(snapped, rect);
+  };
+
+  TimeChart.prototype.showTip = function (t, rect) {
+    var monthly = true;
+    this.series.forEach(function (s) { if (s.medGap < 20 * 86400000) monthly = false; });
+    var html = '<div class="tdate">' + new Date(t).toISOString().slice(0, monthly ? 7 : 10) + "</div>";
+    var shown = 0;
+    this.series.forEach(function (s) {
+      var i = nearest(s.points, t);
+      var pt = s.points[i];
+      if (Math.abs(pt[0] - t) > s.medGap * 0.75) return;
+      html += '<div class="trow"><span class="swatch" style="background:' + css(s.color) + '"></span>' +
+              s.name + '<span class="tval">' + (s.fmt || fmtPct1)(pt[1]) + "</span></div>";
+      shown++;
+    });
+    if (!shown) { this.tip.style.opacity = 0; return; }
+    this.tip.innerHTML = html;
+    this.tip.style.opacity = 1;
+    var g = this.geom;
+    var px = g.left + (t - this.x0) / (this.x1 - this.x0) * (g.right - g.left);
+    var w = this.tip.offsetWidth;
+    var left = px + 14;
+    if (left + w > rect.width - 4) left = px - w - 14;
+    if (left < 4) left = 4;
+    this.tip.style.left = left + "px";
+    this.tip.style.top = "14px";
+  };
+
+  TimeChart.prototype.draw = function () {
+    var cv = this.canvas, ctx = cv.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = this.h;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (!this.series || !this.series.length) return;
+
+    var pad = { l: 46, r: 12, t: 10, b: 26 };
+    var g = { left: pad.l, right: w - pad.r, top: pad.t, bottom: h - pad.b };
+    this.geom = g;
+
+    var x0 = Infinity, x1 = -Infinity, lo = Infinity, hi = -Infinity;
+    this.series.forEach(function (s) {
+      s.points.forEach(function (pt) {
+        if (pt[0] < x0) x0 = pt[0];
+        if (pt[0] > x1) x1 = pt[0];
+        if (pt[1] !== null && isFinite(pt[1])) { if (pt[1] < lo) lo = pt[1]; if (pt[1] > hi) hi = pt[1]; }
+      });
+    });
+    if (!isFinite(lo)) return;
+    var padY = (hi - lo) * 0.08 || 1;
+    lo -= padY; hi += padY;
+    if (this.opts.includeZero && lo > 0) lo = 0;
+    if (this.opts.includeZero && hi < 0) hi = 0;
+    this.x0 = x0; this.x1 = x1;
+
+    var muted = css("--muted"), grid = css("--grid"), axis = css("--axis");
+    var X = function (t) { return g.left + (t - x0) / Math.max(1, x1 - x0) * (g.right - g.left); };
+    var Y = function (v) { return g.bottom - (v - lo) / (hi - lo) * (g.bottom - g.top); };
+
+    (this.bands || []).forEach(function (b) {
+      var s = Math.max(x0, b.start), e = Math.min(x1, b.end);
+      if (e <= s) return;
+      ctx.fillStyle = b.fill;
+      ctx.fillRect(X(s), g.top, Math.max(1, X(e) - X(s)), g.bottom - g.top);
+    });
+
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    var yt = niceTicks(lo, hi, 6);
+    var yFmt = this.opts.yFmt || function (v) { return String(Math.round(v * 100) / 100); };
+    yt.forEach(function (v) {
+      var y = Y(v);
+      ctx.strokeStyle = grid; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(g.left, Math.round(y) + 0.5); ctx.lineTo(g.right, Math.round(y) + 0.5); ctx.stroke();
+      ctx.fillStyle = muted;
+      ctx.fillText(yFmt(v), g.left - 8, y);
+    });
+
+    if (lo < 0 && hi > 0) {
+      ctx.strokeStyle = axis; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(g.left, Math.round(Y(0)) + 0.5); ctx.lineTo(g.right, Math.round(Y(0)) + 0.5); ctx.stroke();
+    }
+
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    var firstYear = new Date(x0).getUTCFullYear();
+    var lastYear = new Date(x1).getUTCFullYear();
+    var years = lastYear - firstYear;
+    var stepY = years > 60 ? 10 : years > 30 ? 5 : years > 12 ? 2 : 1;
+    for (var yr = Math.ceil(firstYear / stepY) * stepY; yr <= lastYear; yr += stepY) {
+      var t = Date.UTC(yr, 0, 1);
+      if (t < x0 || t > x1) continue;
+      var px = X(t);
+      ctx.strokeStyle = grid; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(Math.round(px) + 0.5, g.top); ctx.lineTo(Math.round(px) + 0.5, g.bottom); ctx.stroke();
+      ctx.fillStyle = muted; ctx.fillText(String(yr), px, g.bottom + 6);
+    }
+
+    ctx.strokeStyle = axis; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(g.left, Math.round(g.bottom) + 0.5); ctx.lineTo(g.right, Math.round(g.bottom) + 0.5); ctx.stroke();
+
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    var surface = css("--surface-1");
+    this.series.forEach(function (s) {
+      var color = css(s.color);
+      ctx.strokeStyle = color; ctx.lineWidth = s.width || 2;
+      ctx.setLineDash(s.dash ? [5, 4] : []);
+      ctx.beginPath();
+      var pen = false;
+      s.points.forEach(function (pt) {
+        if (pt[1] === null || !isFinite(pt[1])) { pen = false; return; }
+        var xx = X(pt[0]), yy = Y(pt[1]);
+        if (!pen) { ctx.moveTo(xx, yy); pen = true; } else { ctx.lineTo(xx, yy); }
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    if (this.hover !== null) {
+      var hx = X(this.hover);
+      ctx.strokeStyle = axis; ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(Math.round(hx) + 0.5, g.top); ctx.lineTo(Math.round(hx) + 0.5, g.bottom); ctx.stroke();
+      ctx.setLineDash([]);
+      var hoverT = this.hover;
+      this.series.forEach(function (s) {
+        var i = nearest(s.points, hoverT);
+        var pt = s.points[i];
+        if (Math.abs(pt[0] - hoverT) > s.medGap * 0.75 || pt[1] === null) return;
+        ctx.beginPath(); ctx.arc(X(pt[0]), Y(pt[1]), 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = css(s.color); ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = surface; ctx.stroke();
+      });
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // assembly
+  // ------------------------------------------------------------------
+  var charts = {
+    main: new TimeChart("c-main", "t-main", { includeZero: true, yFmt: function (v) { return Math.round(v) + "%"; } }),
+    tsi: new TimeChart("c-tsi", "t-tsi", { yFmt: function (v) { return String(Math.round(v)); } }),
+    cass: new TimeChart("c-cass", "t-cass", { includeZero: true, yFmt: function (v) { return v.toFixed(1); } }),
+    trucks: new TimeChart("c-trucks", "t-trucks", { includeZero: true, yFmt: function (v) { return Math.round(v * 1000) + "k"; } }),
+    vmt: new TimeChart("c-vmt", "t-vmt", { includeZero: true, yFmt: function (v) { return Math.round(v) + "%"; } }),
+    ca: new TimeChart("c-ca", "t-ca", { includeZero: true, yFmt: function (v) { return Math.round(v) + "%"; } })
+  };
+
+  function S(id) {
+    var p = state.p;
+    return (p && p.series && p.series[id]) || null;
+  }
+
+  function bandList(which, fromMs) {
+    var p = state.p, out = [];
+    if (!p || !p.recessions) return out;
+    var defs = [
+      { key: "us", set: p.recessions.us, varName: "--series-1" },
+      { key: "ca", set: p.recessions.ca, varName: "--series-2" }
+    ];
+    var alpha = parseFloat(css("--band-alpha")) || 0.09;
+    defs.forEach(function (d) {
+      if (which.indexOf(d.key) === -1 || !d.set) return;
+      d.set.bands.forEach(function (b) {
+        var start = ms(b.peak + "-01");
+        var trough = b.trough.split("-");
+        var end = Date.UTC(+trough[0], +trough[1], 1) - 86400000;
+        if (end < fromMs) return;
+        out.push({ start: start, end: end, fill: rgba(css(d.varName), alpha) });
+      });
+    });
+    return out;
+  }
+
+  function legend(elId, items) {
+    document.getElementById(elId).innerHTML = items.map(function (it) {
+      var cls = "swatch" + (it.dash ? " dashed" : "") + (it.band ? " band" : "");
+      var style = it.band
+        ? "background:" + rgba(css(it.color), parseFloat(css("--band-alpha")) * 2)
+        : (it.dash ? "border-top-color:" + css(it.color) : "background:" + css(it.color));
+      return '<span class="item"><span class="' + cls + '" style="' + style + '"></span>' + it.name + "</span>";
+    }).join("");
+  }
+
+  function renderAll() {
+    var ton = S("us_truck_tonnage_yoy"), car = S("us_rail_carloads_yoy"), im = S("us_rail_intermodal_yoy");
+    charts.main.setData([
+      ton && { name: "Truck tonnage", color: "--series-1", points: pts(ton) },
+      car && { name: "Rail carloads", color: "--series-3", width: 1.5, points: pts(car) },
+      im && { name: "Intermodal", color: "--series-4", width: 1.5, points: pts(im) }
+    ].filter(Boolean), bandList(["us"], ton ? pts(ton)[0][0] : -Infinity));
+    legend("legend-main", [
+      { name: "Truck tonnage (the scored series)", color: "--series-1" },
+      { name: "Rail carloads", color: "--series-3" },
+      { name: "Rail intermodal", color: "--series-4" },
+      { name: "US recessions (NBER)", color: "--series-1", band: true }
+    ]);
+
+    var tsi = S("us_tsi_freight");
+    if (tsi) charts.tsi.setData([
+      { name: "Freight TSI", color: "--series-1", points: pts(tsi), fmt: function (v) { return v.toFixed(1); } }
+    ], bandList(["us"], pts(tsi)[0][0]));
+    legend("legend-tsi", [
+      { name: "Freight TSI, 2000 = 100", color: "--series-1" },
+      { name: "US recessions", color: "--series-1", band: true }
+    ]);
+
+    var cs = S("us_cass_shipments"), ce = S("us_cass_expenditures");
+    charts.cass.setData([
+      cs && { name: "Shipments", color: "--series-1", points: pts(cs), fmt: function (v) { return v.toFixed(3); } },
+      ce && { name: "Expenditures", color: "--series-2", points: pts(ce), fmt: function (v) { return v.toFixed(3); } }
+    ].filter(Boolean), bandList(["us"], cs ? pts(cs)[0][0] : -Infinity));
+    legend("legend-cass", [
+      { name: "Cass shipments (volume)", color: "--series-1" },
+      { name: "Cass expenditures (dollars)", color: "--series-2" },
+      { name: "US recessions", color: "--series-1", band: true }
+    ]);
+
+    var trucks = S("us_heavy_truck_sales");
+    if (trucks) charts.trucks.setData([
+      { name: "Heavy trucks SAAR", color: "--series-2", points: pts(trucks), fmt: function (v) { return Math.round(v * 1000) + "k"; } }
+    ], bandList(["us"], pts(trucks)[0][0]));
+
+    var vmt = S("us_vmt_yoy");
+    if (vmt) charts.vmt.setData([
+      { name: "VMT YoY", color: "--series-4", points: pts(vmt) }
+    ], bandList(["us"], pts(vmt)[0][0]));
+
+    var caY = S("ca_rail_tonnes_yoy");
+    if (caY) charts.ca.setData([
+      { name: "Rail tonnes YoY", color: "--series-2", points: pts(caY) }
+    ], bandList(["ca"], pts(caY)[0][0]));
+    legend("legend-ca", [
+      { name: "Total rail traffic, tonnes, YoY", color: "--series-2" },
+      { name: "Canadian recessions (C.D. Howe)", color: "--series-2", band: true }
+    ]);
+  }
+
+  // ------------------------------------------------------------------
+  // tokens: prose numbers render from data, never from markup
+  // ------------------------------------------------------------------
+  function fillTokens(map) {
+    document.querySelectorAll("[data-tok]").forEach(function (el) {
+      var key = el.getAttribute("data-tok");
+      if (map[key] === undefined) { el.classList.add("tok-missing"); el.textContent = "⟨" + key + "⟩"; }
+      else el.textContent = map[key];
+    });
+  }
+
+  function buildTokens(p) {
+    var map = {};
+    var an = p.analysis || {};
+    var ep = an.episodes || {};
+    if (ep.rule) map.rule_statement = ep.rule.statement;
+    var stats = ep.stats || {};
+    map.uncredited = (stats.uncredited_recessions || []).map(monthWord).join(", ") || "none";
+    if (ep.episodes && ep.episodes.length) {
+      var newest = ep.episodes[ep.episodes.length - 1];
+      map.newest_label = newest.start.slice(0, 4);
+      var shape = "tonnage has spent " + newest.months_signalling +
+                  " months below its year-earlier level since the alarm in " +
+                  monthWord(newest.start) + ", bottoming " +
+                  Math.abs(newest.depth_pct).toFixed(0) + "% under its " +
+                  monthWord(newest.crest.month) + " crest in " + monthWord(newest.bottom.month);
+      if (newest.outcome === "pending") {
+        map.newest_row = shape + ". No recession is attached and the window " +
+          "is still open: the longest freight recession in the series, and " +
+          "on this data it is not yet clearly over.";
+      } else if (newest.outcome === "none_in_window") {
+        map.newest_row = shape + ", and no recession came within the window; " +
+          "a goods recession the service economy absorbed.";
+      } else if (newest.outcome === "coincident") {
+        map.newest_row = shape + "; the " + monthWord(newest.recessions[0]) +
+          " recession was already underway when the alarm fired.";
+      } else {
+        map.newest_row = shape + ", followed by the " +
+          monthWord(newest.recessions[0]) + " recession " +
+          newest.lead_from_crest_months + " months after the crest.";
+      }
+    }
+    return map;
+  }
+
+  function buildChip(p) {
+    var st = (p.analysis || {}).status || {};
+    var ton = st.us_truck_tonnage;
+    var chip = document.getElementById("chip");
+    if (!ton) return;
+    var signal = !!st.signal_active;
+    var rail = st.us_rail_carloads_yoy;
+    var html = (signal ? "<b>Freight contracting</b>" : "<b>Freight moving</b>") +
+               " · tonnage " + fmtPct1(ton.yoy_3mma_pct) + " YoY (3mo avg)" +
+               (rail ? " · rail carloads " + fmtPct1(rail.latest[1]) : "");
+    chip.innerHTML = '<span class="dot"></span><span>' + html + "</span>";
+    chip.setAttribute("data-state", signal ? "signal" : "normal");
+    chip.hidden = false;
+  }
+
+  function buildTiles(p) {
+    var an = p.analysis || {};
+    var st = an.status || {};
+    var t = [];
+    function month(iso) { return iso.slice(0, 7); }
+    var ton = st.us_truck_tonnage;
+    if (ton) t.push({ label: "Truck tonnage", color: "var(--series-1)",
+                      value: fmtPct1(ton.yoy_3mma_pct),
+                      note: month(ton.latest[0]) + " · YoY, 3-month average" });
+    if (st.us_rail_carloads_yoy) t.push({ label: "Rail carloads", color: "var(--series-3)",
+                                          value: fmtPct1(st.us_rail_carloads_yoy.latest[1]),
+                                          note: month(st.us_rail_carloads_yoy.latest[0]) + " · year over year" });
+    if (st.us_tsi_freight) t.push({ label: "Freight TSI", color: "var(--series-1)",
+                                    value: st.us_tsi_freight.latest[1].toFixed(1),
+                                    note: month(st.us_tsi_freight.latest[0]) + " · 2000 = 100" });
+    if (st.us_heavy_truck_sales) t.push({ label: "Heavy trucks", color: "var(--series-2)",
+                                          value: Math.round(st.us_heavy_truck_sales.latest[1] * 1000) + "k",
+                                          note: month(st.us_heavy_truck_sales.latest[0]) + " · SAAR, the capex canary" });
+    var stats = (an.episodes || {}).stats;
+    if (stats && stats.episodes !== undefined) {
+      t.push({ label: "Freight recessions", color: "var(--series-4)",
+               value: String(stats.episodes),
+               note: "since 2001 · " + stats.credited_episodes + " met recessions, " + stats.pending + " still open" });
+    }
+    document.getElementById("tiles").innerHTML = t.map(function (x) {
+      return '<div class="tile"><div class="label"><span class="swatch" style="background:' + x.color + '"></span>' + x.label +
+             '</div><div class="value">' + x.value + '</div><div class="note">' + x.note + "</div></div>";
+    }).join("");
+  }
+
+  function buildEpisodes(p) {
+    var ep = p.analysis && p.analysis.episodes;
+    if (!ep || !ep.episodes) return;
+    var rows = ep.episodes.slice().reverse().map(function (e) {
+      var rec, lead;
+      if (e.recessions.length) {
+        rec = e.recessions.map(monthWord).join(" + ");
+        if (e.outcome === "coincident") rec += ' <span class="tag">(alarm trailed)</span>';
+        else rec += ' <span class="tag">(alarm led ' + e.lead_from_alarm_months + " mo)</span>";
+        lead = e.lead_from_crest_months + " mo";
+      } else if (e.outcome === "pending") {
+        rec = "<b>none (yet)</b>"; lead = "—";
+      } else {
+        rec = "none within window"; lead = "—";
+      }
+      return "<tr" + (e.outcome === "pending" ? ' class="open"' : "") + "><td>" +
+             monthWord(e.crest.month) + " (" + e.crest.value.toFixed(1) + ")" +
+             "</td><td>" + monthWord(e.start) +
+             "</td><td>" + monthWord(e.bottom.month) + " (" + e.bottom.value.toFixed(1) + ")" +
+             "</td><td>" + e.depth_pct.toFixed(1) + "%" +
+             "</td><td>" + rec + "</td><td>" + lead + "</td></tr>";
+    });
+    document.querySelector("#ep-tbl tbody").innerHTML = rows.join("");
+  }
+
+  function buildRevisions(log) {
+    var cap = document.getElementById("rev-cap");
+    var wrap = document.getElementById("rev-wrap");
+    if (!log || !log.total) {
+      cap.textContent = "No revisions to already-published observations logged yet; the first scheduled refreshes will start filling this in.";
+      return;
+    }
+    cap.textContent = log.total.toLocaleString() + " revision event" + (log.total === 1 ? "" : "s") +
+      " logged" + (log.recent.length < log.total ? " · showing the " + log.recent.length + " most recent" : "") + ".";
+    wrap.style.display = "";
+    document.querySelector("#rev-tbl tbody").innerHTML = log.recent.map(function (r) {
+      return "<tr><td>" + (r.observed_at || "").slice(0, 10) + "</td><td>" + (r.series || "") +
+             "</td><td>" + (r.changed || "") + "</td><td>" + ((r.span || []).join(" to ")) +
+             "</td><td>" + (r.max_delta === undefined ? "—" : r.max_delta) + "</td></tr>";
+    }).join("");
+  }
+
+  // ------------------------------------------------------------------
+  // wiring
+  // ------------------------------------------------------------------
+  var resizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { Object.keys(charts).forEach(function (k) { charts[k].draw(); }); }, 120);
+  });
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    (mq.addEventListener ? mq.addEventListener.bind(mq, "change") : mq.addListener.bind(mq))(renderAll);
+  }
+
+  fetch("/api/data", { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (p) {
+      state.p = p;
+      document.getElementById("status").style.display = "none";
+
+      var count = 0, obsTotal = 0, key;
+      for (key in p.series) { count++; obsTotal += p.series[key].obs.length; }
+      var ton = S("us_truck_tonnage");
+      document.getElementById("stamp").textContent =
+        count + " series · " + obsTotal.toLocaleString() + " observations · tonnage through " +
+        (ton ? ton.as_of.slice(0, 7) : "—") + " · refreshed " +
+        (p.series_fetched_at || "").slice(0, 10) + " · built __BUILD_TIME__";
+
+      fillTokens(buildTokens(p));
+      buildChip(p);
+      buildTiles(p);
+      buildEpisodes(p);
+      buildRevisions(p.changelog);
+      renderAll();
+    })
+    .catch(function (e) {
+      document.getElementById("status").textContent = "Could not load the data (" + e.message + "). The updater may be briefly unavailable; try a reload in a minute.";
+    });
+})();
+</script>
+</body>
+</html>
