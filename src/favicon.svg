@@ -2,7 +2,7 @@
   <title>freight</title>
   <rect width="64" height="64" rx="13" fill="#12120f"/>
   <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="12.5" y="17.5" width="39" height="19" rx="4" stroke="#f1efe5" fill="none"/>
+  <rect x="12.5" y="17.5" width="39" height="19" rx="4" stroke="#f1efe5"/>
   <circle cx="23" cy="47" r="5" fill="#1baf7a" stroke="none"/>
   <circle cx="41" cy="47" r="5" fill="#1baf7a" stroke="none"/>
   </g>
