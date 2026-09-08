@@ -8,7 +8,7 @@ positives" are real goods recessions (2015-16, 2022-24) that the service economy
 shrugged off. That reframing is the honest content, not a bug to tune away.
 
 Site eight of the family, sixth econ-core consumer. Written 2026-09-07; every series
-probed live from daedalus that day through econcore's fetchers.
+probed live that day through econcore's fetchers.
 
 ## Verified sources
 
