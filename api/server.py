@@ -239,6 +239,18 @@ def _yoy(avgs, periods=12):
     return out
 
 
+# The chip's own rule: EPISODE_RULE's threshold without the sustain and merge
+# conditions, which date completed episodes rather than describe today.
+CHIP_RULE = ("The freight-contraction signal is on when the 3-month average "
+             "of truck tonnage sits below its level a year earlier.")
+
+
+def _signed(value, places=1):
+    """The page's sign convention: U+2212 for negatives, never a hyphen."""
+    sign = "+" if value > 0 else ("−" if value < 0 else "")
+    return "%s%.*f%%" % (sign, places, abs(value))
+
+
 def build_status(series):
     status = {}
     tonnage = series.get("us_truck_tonnage")
@@ -255,6 +267,22 @@ def build_status(series):
         entry = series.get(sid)
         if entry:
             status[sid] = {"latest": [entry["obs"][-1][0], entry["obs"][-1][1]]}
+
+    ton = status.get("us_truck_tonnage")
+    if ton and ton.get("yoy_3mma_pct") is not None:
+        signal = bool(status.get("signal_active"))
+        detail = "tonnage %s year over year (3-month average)" % _signed(
+            ton["yoy_3mma_pct"])
+        rail = status.get("us_rail_carloads_yoy")
+        if rail:
+            detail += " · rail carloads %s" % _signed(rail["latest"][1])
+        status["headline"] = {
+            "state": "signal" if signal else "normal",
+            "label": "Freight contracting" if signal else "Freight moving",
+            "detail": detail,
+            "as_of": ton["latest"][0],
+            "rule": CHIP_RULE,
+        }
     return status
 
 
@@ -560,7 +588,14 @@ def build_data_payload():
     try:
         doc = _load("series.json")
         payload["series"] = doc.get("series", {})
-        payload["analysis"] = doc.get("analysis", {})
+        # The stored block is written by the refresh, which runs out of
+        # process; one written before the status contract existed has no
+        # headline, and the chip would stay hidden until the next scheduled
+        # run. Recomputing the cheap half here makes a deploy take effect now.
+        analysis = dict(doc.get("analysis", {}))
+        if "headline" not in (analysis.get("status") or {}):
+            analysis["status"] = build_status(payload["series"])
+        payload["analysis"] = analysis
         payload["series_fetched_at"] = doc.get("fetched_at")
         payload["series_errors"] = doc.get("errors", {})
     except Exception as exc:  # noqa: BLE001 - charts degrade, page renders
@@ -600,6 +635,7 @@ class Handler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "series": len(doc.get("series", {})),
                     "latest": tonnage.get("as_of"),
+                    "headline": st.get("headline"),
                     "signal_active": st.get("signal_active"),
                     "errors": len(doc.get("errors", {})),
                     "fetched_at": doc.get("fetched_at"),

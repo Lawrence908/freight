@@ -637,18 +637,17 @@ tr.open td { font-weight: 650; }
     return map;
   }
 
+  /* Rendered from analysis.status.headline rather than recomposed here: the
+     server owns the rule and its wording, so the hub and the page cannot
+     drift into saying different things about the same reading. */
   function buildChip(p) {
-    var st = (p.analysis || {}).status || {};
-    var ton = st.us_truck_tonnage;
+    var head = ((p.analysis || {}).status || {}).headline;
     var chip = document.getElementById("chip");
-    if (!ton) return;
-    var signal = !!st.signal_active;
-    var rail = st.us_rail_carloads_yoy;
-    var html = (signal ? "<b>Freight contracting</b>" : "<b>Freight moving</b>") +
-               " · tonnage " + fmtPct1(ton.yoy_3mma_pct) + " YoY (3mo avg)" +
-               (rail ? " · rail carloads " + fmtPct1(rail.latest[1]) : "");
-    chip.innerHTML = '<span class="dot"></span><span>' + html + "</span>";
-    chip.setAttribute("data-state", signal ? "signal" : "normal");
+    if (!head) return;
+    chip.innerHTML = '<span class="dot"></span><span><b>' + head.label + "</b> · " +
+                     head.detail + "</span>";
+    chip.setAttribute("data-state", head.state);
+    chip.title = head.rule;
     chip.hidden = false;
   }
 
